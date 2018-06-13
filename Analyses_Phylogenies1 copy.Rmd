@@ -72,6 +72,8 @@ levels(data$Plant_Species)[levels(data$Plant_Species)=="Zanthoxylum fagara"] <- 
 levels(data$Plant_Species)[levels(data$Plant_Species)=="Palicourea forsteronioides"] <- "Psychotria forsteronioides"
 levels(data$Plant_Species)[levels(data$Plant_Species)=="Schinus therebentifolia"] <- "Schinus terebinthifolia"
 
+data<-data[!data$Plant_Species2==("Duranta erecta"),] ### remove because it interacts with Estrilda - alien spp
+data<-data[!data$Plant_Species==("Duranta erecta"),] ### remove because it interacts with Estrilda - alien spp
 
 plants_list_atlantic<-levels(data$Plant_Species2)
 plants_unique_atl<-as.data.frame(plants_list_atlantic)
@@ -87,10 +89,10 @@ names(plants_unique_atl)[names(plants_unique_atl) == 'plants_list_atlantic'] <- 
 ```{r building tree plants, include= =FALSE}
 
 ########## PLANTS 
-phylo<-read.tree("PhytoPhylo.tre") # read in the megaphylogeny, obtained when downloading Phylomaker
-nodes<-read.csv("nodes.csv",header=T, sep="\t") # read in the nodes information of the megaphylogeny.
-source("S.PhyloMaker")
-plants_taxon<-read.csv("plants_list_taxonomy_regional_pool.csv")
+#phylo<-read.tree("PhytoPhylo.tre") # read in the megaphylogeny, obtained when downloading Phylomaker
+#nodes<-read.csv("nodes.csv",header=T, sep="\t") # read in the nodes information of the megaphylogeny.
+#source("S.PhyloMaker")
+#plants_taxon<-read.csv("plants_list_taxonomy_regional_pool.csv")
 #plants_taxon<-read.csv("plants_list_taxonomy.csv")
 #result_plants<-S.PhyloMaker(splist=plants_taxon, tree=phylo, nodes=nodes) # run the function S.PhyloMaker.
 
@@ -181,6 +183,8 @@ library(ape); library(picante); library(phytools)
 #setwd("~/Dropbox/Phylogenetic interactions/Phylogenies Atlantic Forest")
 bt100<-read.newick("birds_solved100_trees.nwk")
 
+bt100<-lapply(bt100,drop.tip,tip="Estrilda_astrild")
+
 #To calculate Evolutionary Distinctiveness across the 100 trees in the list
 
 ED100<-lapply(bt100, evol.distinct)
@@ -196,13 +200,16 @@ ED100<-ED100[,-1] ## exclude first column
 colnames(ED100)<-paste("tree",1:100,sep="") ## give name to each column
 ED100 <- cbind(Frugivore_Species2 = rownames(ED100), ED100) # give name to first column to later match with other df
 rownames(ED100) <- NULL
-#write.csv(ED100,"birds_ED100.csv")
+write.csv(ED100,"birds_ED100.csv")
 ```
 
 calculating ED plants
 ```{r ED plants, include= =FALSE}
 
 tt100<-read.newick("plants_100trees.nwk")
+tt100<-lapply(tt100,drop.tip,tip="Duranta_erecta")
+
+
 #### evolutionary distinctiveness, function in Picante
 ED100_p<-lapply(tt100, evol.distinct)
 
@@ -222,7 +229,7 @@ write.csv(ED100_p,"plants_ED100.csv")
 
 ED and traits (seed diameter and body mass) are correlated at the regional level in the Atlantic (ie, native species and interactions with mutualistic seed disperser birds) but ony body mass and ED are significanlty related at the communities level
 ```{r ED and traits species REGIONAL LEVEL}
-###-------------------------- Body mass - 223 species at the regional level
+###-------------------------- Body mass - 222 species at the regional level
 
 ## getting unique bird species and mergind with their body mass (from Atlantic filtered as 'data', natives and mutualistic)
 ED100<-read.csv("birds_ED100.csv", row.names = 1)
@@ -233,12 +240,14 @@ names(birds_unique)[names(birds_unique) == 'birds_list'] <- 'Frugivore_Species2'
 bm_birds1<-merge(birds_unique, data,by="Frugivore_Species2")
 bm_birds<-bm_birds1[,c("Frugivore_Species2", "Frug_Body_Mass", "Frugivore_Species", "interaction","Plant_Species2","seed_diameter", "Plant_Species")]
 bm_unique_atl<-subset(bm_birds,!duplicated(bm_birds[,1]))
-
+row.names(bm_unique_atl)<-bm_unique_atl$Frugivore_Species2
 ## checking that names of traits and tree are the same REGIONAL LEVEL
 setdiff((bm_unique_atl$Frugivore_Species2),(ED100$Frugivore_Species2))
 setdiff(ED100$Frugivore_Species2,bm_unique_atl$Frugivore_Species2)
 
-row.names(bm_unique_atl)<-bm_unique_atl$Frugivore_Species2
+removed<-setdiff(bm_unique_atl$Frugivore_Species2,bm_unique_commu2$Frugivore_Species2)
+
+bm_unique_commu<-bm_unique_atl[-which(row.names(bm_unique_atl)%in%removed),]
 
 ED100["mean_birds_ed"] <- rowMeans(ED100[,2:101])
 bm_unique_atl["mean_birds_ed"] <- rowMeans(ED100[,2:101])
@@ -246,7 +255,7 @@ write.csv(ED100, "birds_ED100.csv")
 
 
 ###
-### -------------------------Seed diameter - 441 species at the regional level
+### -------------------------Seed diameter - 440 species at the regional level
 
 ED100_p<-read.csv("plants_ED100.csv", row.names = 1)
 
@@ -261,7 +270,7 @@ setdiff((sd_unique_atl$Plant_Species2),(ED100_p$Plant_Species2))
 setdiff(ED100_p$Plant_Species2,sd_unique_atl$Plant_Species2)
 
 #quitar<-setdiff(row.names(ED100),(bm_unique$Frugivore_Species2))
-#quitar<-setdiff((sd_unique$Plant_Species2),(ED100_p2$Plant_Species2))
+#quitar<-setdiff((sd_unique_commu2$Plant_Species2),(ED100_p2$Plant_Species2))
 #row.names(sd_unique)<-sd_unique$Plant_Species2
 #sd_unique<-sd_unique[-which(row.names(sd_unique)%in%quitar),]
 
@@ -1101,7 +1110,7 @@ ED and traits (seed diameter and body mass) are correlated for the communities o
 ```{r ED and traits COMMUNITIES, include=FALSE}
 
 ##################working with bird species for the selected communities
-#### ------------------- BIRDS - 187 sp among the selected communities - 223 regional level
+#### ------------------- BIRDS - 186 sp among the selected communities - 223 regional level
 
 bm_ED_commu<-join(bm_commu, ED100, by="Frugivore_Species2") 
 bm_unique_commu<-subset(bm_commu,!duplicated(bm_commu[,1])) # using unique spp for the traits correlations
@@ -1109,11 +1118,11 @@ row.names(bm_unique_commu)<-bm_unique_commu$Frugivore_Species2
 bm_unique_commu2<-join(bm_unique_commu, ED100, by = "Frugivore_Species2", type = "left")
 
 ####
-##-------------------------PLANTS - 361 spp among the selected communities
+##-------------------------PLANTS - 360 spp among the selected communities
 #names(ED100_p)[names(ED100_p) == 'Plant_Species'] <- 'Plant_Species'
 
-sd_ED_commu<-join(sd_commu, ED100_p, by="Plant_Species2") 
-sd_unique_commu<-subset(sd_commu,!duplicated(sd_commu[,1])) # using unique spp for the traits correlations
+sd_ED_commu<-join(sd_commu, sd_unique_atl, by="Plant_Species2") 
+sd_unique_commu<-subset(sd_ED_commu,!duplicated(sd_ED_commu[,1])) # using unique spp for the traits correlations
 row.names(sd_unique_commu)<-sd_unique_commu$Plant_Species
 sd_unique_commu2<-join(sd_unique_commu, ED100_p, by = "Plant_Species2", type = "left")
 
@@ -1126,12 +1135,14 @@ sd_unique_commu2<-join(sd_unique_commu, ED100_p, by = "Plant_Species2", type = "
 ### ----------------Birds
 source("~/Dropbox/Phylogenetic interactions/Phylogenies - Metanetwork Miguel/R codes/functions/corPerm.R")
 
+
+
 ### ----------- regional level
-results_ed_bm<-corPerm3(log(bm_unique_atl$Frug_Body_Mass),ED100$mean_birds_ed,nperm=999, tail=2)
+results_ed_bm<-corPerm3(log(bm_unique_atl$Frug_Body_Mass),bm_unique_atl$mean_birds_ed,nperm=999, tail=2)
 results_ed_bm
 
-### ----------- community level
-results_ed_bm_commu<-corPerm3(log(bm_unique_commu2$Frug_Body_Mass),bm_unique_commu2$mean_birds_ed,nperm=999, tail=2)
+### ----------- studies species in the local communities level
+results_ed_bm_commu<-corPerm3(log(bm_unique_commu$Frug_Body_Mass),bm_unique_commu$mean_birds_ed,nperm=999, tail=2)
 results_ed_bm_commu
 
 
@@ -1143,7 +1154,7 @@ plot(log(bm_unique_atl$Frug_Body_Mass)~log(bm_unique_atl$mean_birds_ed),
      )
     #dev.copy2pdf(file="Figures/ED_bodymass_commu.pdf")
 
-plot(log(bm_unique_commu2$Frug_Body_Mass)~log(bm_unique_commu2$mean_birds_ed),
+plot(log(bm_unique_commu$Frug_Body_Mass)~log(bm_unique_commu$mean_birds_ed),
      cex.main=.7,cex.lab=.8, main = "a) Bird Frugivore Species",
      ylab="Body mass (g)",
      xlab="Evolutionary Distinctiveness (log[mean ED])"
@@ -1158,13 +1169,13 @@ seed_diam<-as.numeric(sd_unique_atl$seed_diameter) ## 444 species
 results_ed_sd<-corPerm3(log(seed_diam),log(ED100_p$mean_plants_ed),nperm=999, tail=2)
 results_ed_sd
 
-##### ----- community level  ### 361 species
+##### ----- community level  ### 360 species
 seed_diam1<-as.numeric(sd_unique_commu2$seed_diameter)
 results_ed_sd_commu<-corPerm3(log(seed_diam1),log(sd_unique_commu2$mean_plants_ed),nperm=999, tail=2)
 results_ed_sd_commu
 
 
-par(mfrow=c(1,2))
+par(mfrow=c(1,1))
 plot(log(seed_diam)~log(ED100_p$mean_plants_ed),
      cex.main=.7,cex.lab=1,main = "Regional Level",
      ylab="Seed diameter (mm)",
@@ -1252,19 +1263,20 @@ testing ED per fragment - area and defaunation
 ```{r ED of interactions}
 
 #### order dataframes by interaction - 3566 levels of interactions, but 3502 observations
-
 df<-int_commu[with(int_commu,order(interaction)),]
-df1<-sd_ED_commu[with(sd_ED_commu,order(interaction)),]
+df1<-sd_ED_commu[with(sd_unique_commu2,order(interaction)),]
 df1<-df1[,c(1:8,109)]
 
 
 #### calculating the mean ED per interactions
 
 int_commu1<-join(df,df1, by = "Plant_Species", type = "left", match = "first")
-int_commu1<-int_commu1[,c(1:4,10,12)]
-int_commu2<-join(int_commu1,bm_ED_commu, by = "Frugivore_Species", type = "left", match = "first")
+int_commu1<-int_commu1[,c(1:4,10,112)]
+int_commu2<-join(int_commu1,bm_unique_commu, by = "Frugivore_Species", type = "left", match = "first")
 int_commu2<-int_commu2[,c(1:8,13)]
 int_commu2[,10]<-NULL
+
+
 int_commu2$int_ed<-with(int_commu2, mean_birds_ed+mean_plants_ed)
 
 ####### calculating mean of interactions ED per site
@@ -1358,12 +1370,6 @@ dev.copy2pdf(file="Figures/EDint_def_nullmodels_RemovedIntervales.pdf")
 
 
 #######
-m1<-lm(int_commu2$mean_birds_ed~int_ed_site1$def_sum)
-
-
-
-
-
 
 save.image("ms_phylogenies1.RData")
 
@@ -1372,8 +1378,8 @@ save.image("ms_phylogenies1.RData")
 ED and centrality (k, number of fragments in which the interaction occurs)
 ```{r degree of interactions}
 ### transform dataframe into a matrix for centrality
-#df<-int_commu2[,c("site","interaction", "int_ed")]
-#matrix_int_ed<-xtabs(int_ed~site+interaction, data=df)
+df<-int_commu2[,c("site","interaction", "int_ed")]
+matrix_int_ed<-xtabs(int_ed~site+interaction, data=df)
 
 matrix_bin<-matrix_int_ed
 matrix_bin[matrix_bin > 0] = 1
@@ -1476,12 +1482,12 @@ Asymmetries
 #ed<-int_commu2
 ed1<-subset(ed,!duplicated(ed[,1])) #### testing with unique interactions
 
-##### testing whether interactions are asymmetric
-asym_test<-corPerm3(ed1$mean_birds_ed,ed1$mean_plants_ed, nperm = 999, tail = 2)
-asym_test
+##### testing whether interactions are symmetric
+#asym_test<-corPerm3(ed1$mean_birds_ed,ed1$mean_plants_ed, nperm = 999, tail = 2)
+#asym_test
 
-asym_scl_test<-corPerm3(ed1$mean_birds_ed_scl,ed1$mean_plants_ed_scl, nperm = 999, tail = 2)
-asym_scl_test
+#asym_scl_test<-corPerm3(ed1$mean_birds_ed_scl,ed1$mean_plants_ed_scl, nperm = 999, tail = 2)
+#asym_scl_test
 
 ### dij= (Ai-Bj)/max(Ai,Bj)
 #A= mean_birds_ed
@@ -1498,6 +1504,7 @@ for (i in 1:nrow(ed)){
 ed["asym"]<-asym
 ed$asym
 
+
 asym_scl<-NULL
 for (i in 1:nrow(ed)){
  asym_scl [i]<- (ed$mean_birds_ed_scl[i]-ed$mean_plants_ed_scl[i])/max(ed$mean_birds_ed_scl[i],ed$mean_plants_ed_scl[i])
@@ -1505,43 +1512,39 @@ for (i in 1:nrow(ed)){
 ed["asym_scl"]<-asym_scl
 ed$asym_scl
 
+#### testing whether ED asymmetry values are different than zero, therefore asymmetric
+#t.test(ed$asym)
+
+
 ####### Chi-squared to test differences 
-type<-NULL
-type_asym<-ifelse(ed$asym > 0,"positive","negative")
-ed["type_asym"]<-type_asym
-pos_asym<-as.vector(ed$asym[which(ed$asym > 0)])
-neg_asym<-as.vector(ed$asym[which(ed$asym < 0)])
+#type<-NULL
+#type_asym<-ifelse(ed$asym > 0,"positive","negative")
+#ed["type_asym"]<-type_asym
+#pos_asym<-as.vector(ed$asym[which(ed$asym > 0)])
+#neg_asym<-as.vector(ed$asym[which(ed$asym < 0)])
 ########### Chi-squared test
-mytab <- with(ed,table(type_asym,asym))
-ttest<-chisq.test(mytab)
-(ttest)
+#mytab <- with(ed,table(type_asym,asym))
+#ttest<-chisq.test(mytab)
+
 
 ######## testing with unique interactions 2669
-asym<-NULL
-for (i in 1:nrow(ed1)){
- asym [i]<- (ed1$mean_birds_ed[i]-ed1$mean_plants_ed[i])/max(ed1$mean_birds_ed[i],ed1$mean_plants_ed[i])
-}
-ed1["asym"]<-asym
-ed1$asym
+#asym<-NULL
+#for (i in 1:nrow(ed1)){
+ #asym [i]<- (ed1$mean_birds_ed[i]-ed1$mean_plants_ed[i])/max(ed1$mean_birds_ed[i],ed1$mean_plants_ed[i])
+#}
+#ed1["asym"]<-asym
+#ed1$asym
 
 asym_scl<-NULL
 for (i in 1:nrow(ed1)){
  asym_scl [i]<- (ed1$mean_birds_ed_scl[i]-ed1$mean_plants_ed_scl[i])/max(ed1$mean_birds_ed_scl[i],ed1$mean_plants_ed_scl[i])
 }
 ed1["asym_scl"]<-asym_scl
-ed1$asym_scl
+hist(ed1$asym_scl)
+
+t.test(ed1$asym_scl)
 
 
-####### Chi-squared to test differences 
-type<-NULL
-type_asym<-ifelse(ed1$asym > 0,"positive","negative")
-ed1["type_asym"]<-type_asym
-pos_asym<-as.vector(ed1$asym[which(ed1$asym > 0)])
-neg_asym<-as.vector(ed1$asym[which(ed1$asym < 0)])
-########### Chi-squared test
-mytab <- with(ed1,table(type_asym,asym))
-ttest<-chisq.test(mytab)
-(ttest)
 
 
 #### scaled
@@ -1561,7 +1564,7 @@ summary(mtest)
 
 mk3<-glmer(degree~asym + (1|Frugivore_Species)+(1|Plant_Species),data=ed,family="poisson")
 summary(mk3)
-str(ed)
+
 
 plot(ed1$degree~ed1$asym,xlab="ED of interaction asymmetry",
     ylab="N fragments in which the interaction occurs")
@@ -1606,18 +1609,18 @@ summary(mk5)
 #####
 #CONTOUR PLOTS OPTION
 library(plotly)
-  x = log(ed$mean_plants_ed)
-  y = log(ed$mean_birds_ed)
+  x = (ed1$mean_plants_ed_scl)
+  y = (ed1$mean_birds_ed_scl)
 
 ####
 cols<-c("blue", "yellow")
-q<-ggplot(data=ed, aes(x=x, y=y, z=asym)) +
+q<-ggplot(data=ed1, aes(x=x, y=y, z=asym_scl)) +
 stat_density2d(aes(alpha=..level..), contour=TRUE, geom="polygon", colour= "blue") +
 geom_density2d(size=1)+
-  scale_y_continuous(limits = c(0,5)) +
-  scale_x_continuous(limits = c(0,5)) +
+  scale_y_continuous(limits = c(0,.5)) +
+  scale_x_continuous(limits = c(0,.5)) +
   labs(y="Birds Evolutionary Distinctiveness (log)", x = "Plants Evolutionary Distinctiveness (log)") +
-  geom_point(aes(colour = asym), shape = 21, size = 1, stroke = 0.2)+
+  geom_point(aes(colour = asym_scl), shape = 21, size = 1, stroke = 0.2)+
   scale_colour_gradient(low="dark green", high="orange") +
              
   theme_bw() +
