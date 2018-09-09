@@ -1,2 +1,2 @@
 # Phylogenies_Seed_Dispersal
-MS Phylogenetic Seed Dispersal
+Analyses of Evolutionary Distinctness of Birds and Plants
