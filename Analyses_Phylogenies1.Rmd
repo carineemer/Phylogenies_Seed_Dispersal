@@ -10,15 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r input data}
-setwd("~/Dropbox/Phylogenetic interactions/Phylogenies - Metanetwork Miguel/data")
-load("~/Dropbox/Phylogenetic interactions/Phylogenies - Metanetwork Miguel/data/ms_phylogenies1.RData")
-
-atlantic<-read.csv("working_data.csv", header=TRUE)
-#data_pizo<-read.csv("frugivoria_Pizo natives.csv")
-communities<-read.csv("data_communities nat.csv")
-plants_taxon<-read.csv("plants_list_taxonomy_regional_pool.csv")
-
+```{r load packages}
 library(picante)
 library(phytools)
 library(ape)
@@ -34,6 +26,17 @@ library(lme4)
 library(tibble)
 library(phangorn)
 library(plotly)
+```
+
+
+```{r input data}
+setwd("~/Dropbox/Phylogenetic interactions/Phylogenies - Metanetwork Miguel/data and analyses")
+load("~/Dropbox/Phylogenetic interactions/Phylogenies - Metanetwork Miguel/data/ms_phylogenies1.RData")
+
+atlantic<-read.csv("working_data.csv", header=TRUE)
+#data_pizo<-read.csv("frugivoria_Pizo natives.csv")
+communities<-read.csv("data_communities nat.csv")
+plants_taxon<-read.csv("plants_list_taxonomy_regional_pool.csv")
 
 save.image("ms_phylogenies2.RData")
 ```
@@ -80,7 +83,7 @@ plants_list_atlantic<-levels(data$Plant_Species2)
 plants_unique_atl<-as.data.frame(plants_list_atlantic)
 names(plants_unique_atl)[names(plants_unique_atl) == 'plants_list_atlantic'] <- 'species'
 
-#write.csv(plants_unique_atl,"plants_list_regional_pool.csv")
+write.csv(plants_unique_atl,"plants_list_regional_pool.csv")
 
 #plants1<-merge(plants_unique_atl, plants_taxon,by="species", all.x= T, all.y=F) ## this merging is to get the genus and family columns to the list of species, only
 #write.csv(plants1,"plants_list_taxonomy_regional_pool.csv") ##### fixed 'NA' in excel
@@ -1174,7 +1177,7 @@ plot(log(seed_diam1)~log(sd_unique_commu$mean_plants_ed),
      ylab="Seed diameter (mm)",
      xlab="Evolutionary Distinctiveness (log[mean ED])"
      )
-    dev.copy2pdf(file="Figures/ED_sd_commu.pdf")
+    #dev.copy2pdf(file="Figures/ED_sd_commu.pdf")
 
 ```
 
@@ -1194,7 +1197,7 @@ creating a Defaunation index per community
   #print(i)
   #}
 
-### alternative for the loop, by Carol Bello
+### alternative for the loop
 #library(plyr)
 sum_bm<-NULL
 sum_bm_site=ddply(bm_commu, .(site), summarize, sum_bm=sum(Frug_Body_Mass, na.rm=T))
@@ -1222,12 +1225,27 @@ def_site<-merge(communities1,mean_bm_site, by= "site", all=T)
 
 #def_site<-cbind.data.frame((new_commu3$site),new_commu3$def_mean,new_commu3$def_sum, new_commu3$area_ha) ### to get only the variables of interest
 
-###### 
+
+
+```
+
+
+```{r defaunation area correlation}
 
 cor(def_site$def_sum,log(def_site$area_ha)) ### area and defaunation are correlated by -0.63
-
+###### we use the residual of the correlation as the indpendent variable
 m1<-lm(def_site$def_sum~log(def_site$area_ha))
 summary(m1)
+
+def_resid<-residuals(m1)
+def_site[,5]<-NULL
+def_site$def_residuals<-def_resid
+
+#### result 
+m1b<-lm(def_site$def_sum~(def_site$def_residuals))
+summary(m1b)
+
+
 ##plots - add the number of each within the circles
 plot(def_site$def_sum~log(def_site$area_ha),
      xlab = "Area of the fragments (log[ha])",
@@ -1235,12 +1253,12 @@ plot(def_site$def_sum~log(def_site$area_ha),
      cex.lab=1.3, pch = 19, col = "darkgreen", cex = 2
      )
 abline(m1)
-dev.copy2pdf(file="Figures/Def_area.pdf")
+#dev.copy2pdf(file="Figures/Def_area.pdf")
 
-def_resid<-residuals(m1)
-def_site[,5]<-NULL
-def_site$def_residuals<-def_resid
+
 ```
+
+
 
 
 More defaunated fragments hold interactions performed by less evolutionary distinctive bird and plant species (ED)
@@ -1289,8 +1307,12 @@ plot(log(int_ed_def_site$sum_ED_site)~int_ed_def_site$def_sum,
 plot(log(int_ed_def_site$sum_ED_site)~log(int_ed_def_site$area_ha),
           xlab = "Area of the fragment (log[ha])", xlim = c(12,0),
      ylab = "Sum of Evolutionary Distinctiveness of Interactions")
+
+plot(log(int_ed_def_site$sum_ED_site)~log(int_ed_def_site$area_ha),
+          xlab = "Area of the fragment (log[ha])", xlim = c(12,0),
+     ylab = "Sum of Evolutionary Distinctiveness of Interactions")
   
-dev.copy2pdf(file="Figures/ED_def_area.pdf")    
+#dev.copy2pdf(file="Figures/ED_def_area.pdf")    
 
 ### simple linear models
 m1<-lm(mean_ED_site~def_mean, data = int_ed_def_site)
@@ -1302,6 +1324,9 @@ summary(m2) # sum ED per site marginally related to mean DEF
 m3<-lm(sum_ED_site~def_sum, data = int_ed_def_site)
 summary.lm(m3) ### sums of ED is effected by the Def (sum)
 
+###### selected model used in the MS
+final_model<-lm(log(int_ed_def_site$sum_ED_site)~int_ed_def_site$def_residuals)
+summary(final_model)
 
 ###### NULL MODELS
 ### transform dataframe into a matrix for the null models 
@@ -1321,6 +1346,8 @@ sd_nulls_ed_int<-apply(nulls3i, 1, sd)
 
 ses.ed_int<-(rowMeans(matrix_int_ed)-mean_nulls_ed_int)/sd_nulls_ed_int
 
+
+###### include these results in the SM
 results_ses_ed_int<-lm(ses.ed_int~(int_ed_def_site$def_sum))
 summary.lm(results_ses_ed_int)
 par(mfrow=c(1,1))
@@ -1328,10 +1355,13 @@ plot((ses.ed_int)~(int_ed_def_site$def_sum),
      main="t= -4.811, p< 0.001",cex.main=.8,
      ylab="Deviation from null models (ED[MY])",cex.lab=0.9,
      ylim = c(-20,70),
-     xlab="Defaunation index"
+     xlab="Intensity of defaunation"
      )
 abline(results_ses_ed_int)
 dev.copy2pdf(file="Figures/EDint_def_nullmodels.pdf")
+
+
+
 
 
 ### removing intervales
