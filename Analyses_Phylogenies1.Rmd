@@ -39,6 +39,7 @@ communities<-read.csv("data_communities nat.csv")
 plants_taxon<-read.csv("plants_list_taxonomy_regional_pool.csv")
 
 save.image("ms_phylogenies2.RData")
+
 ```
 
 ```{r filtering dataset}
@@ -1260,7 +1261,6 @@ abline(m1)
 
 
 
-
 More defaunated fragments hold interactions performed by less evolutionary distinctive bird and plant species (ED)
 testing ED per fragment - area and defaunation
 ```{r ED of interactions}
@@ -1328,7 +1328,10 @@ summary.lm(m3) ### sums of ED is effected by the Def (sum)
 final_model<-lm(log(int_ed_def_site$sum_ED_site)~int_ed_def_site$def_residuals)
 summary(final_model)
 
-###### NULL MODELS
+```
+
+```{r null models for cumulative EDi, Fig R1}
+###### NULL MODELS to control for differences in network size affecting cumulative EDi
 ### transform dataframe into a matrix for the null models 
 df_new<-int_commu2[,c("site","interaction", "int_ed")]
 matrix_int_ed<-xtabs(int_ed~site+interaction, data=df_new,
@@ -1353,15 +1356,31 @@ summary.lm(results_ses_ed_int)
 par(mfrow=c(1,1))
 plot((ses.ed_int)~(int_ed_def_site$def_sum), 
      main="t= -4.811, p< 0.001",cex.main=.8,
-     ylab="Deviation from null models (ED[MY])",cex.lab=0.9,
+     ylab="Deviation from null models (EDi[MY])",cex.lab=0.9,
      ylim = c(-20,70),
-     xlab="Intensity of defaunation"
+     xlab="Intensity of defaunation",
+     pch = 19, col = "light blue", cex = 2
      )
+text((int_ed_def_site$ses.ed_int), int_ed_def_site$def_sum, int_ed_def_site$ID_new) 
+int_ed_def_site<-cbind(ses.ed_int,int_ed_def_site)
+ls(int_ed_def_site)
 abline(results_ses_ed_int)
 dev.copy2pdf(file="Figures/EDint_def_nullmodels.pdf")
 
 
-
+############# ggplot
+p<-ggplot(int_ed_site2, aes(x= def_sum, y= (ses.ed_int1), colour="green", label=ID_new)) +
+  geom_text(aes(label=ID_new),hjust=.6, vjust=0.5, color = "black", size = 4)
+p + geom_point(color = "blue", size = 8, shape = 21, stroke = .5) +
+  theme_bw() +
+  theme(axis.line = element_line(colour = "black"),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank()) +
+  theme(axis.title.x = element_text(size=12),
+      axis.title.y = element_text(size=12)) +
+   labs(y="Deviation from null models (EDi[MY])", x = "Intensity of defaunation")
 
 
 ### removing intervales
@@ -1383,8 +1402,48 @@ dev.copy2pdf(file="Figures/EDint_def_nullmodels.pdf")
 #######
 
 save.image("ms_phylogenies2.RData")
+```
+
+```{r resample Intervales}
+### the idea is to resample intervales according to the N of interactions observed in the smaller area fragment (26), then compare the total EDi
+# differences in total EDi indicates the loss is not at random
+## think on a null model for this
+
+df1<-as.data.frame(intervales_i$interaction)
+colnames(df1)[1]<-"interaction"
+df2<-join(df1,int_commu2, by = "interaction", type = "left", match = "first")
+
+#### code to sample Intervales 26 times, and obtain the sum EDi per sample
+
+df<-select(df2, interaction, int_ed)
+output <- lapply(1:1000, function(rep) {
+    sample_n((df), 26, replace = FALSE) %>%
+    summarize(sum_x = sum(int_ed)) %>%
+    mutate(replicate=rep)
+})
+rep_df <- do.call(rbind, output)
+(rep_df)
+
+mean_sub_intervales<-mean(as.numeric(rep_df$sum_x), na.rm = TRUE)
+sd_sub_intervales<-sd(as.numeric(rep_df$sum_x), na.rm = TRUE)
+z_sub_intervales<-(sum_int_ED_site[21,2]-mean_sub_intervales)/sd_sub_intervales
+z_sub_intervales#### there is no difference from the observed EDi of the smaller area and the sub-sampled Intervales --- DOES IT MAKE SENSE?
+
+
+#sum_int_ED_site[10,] # intervales 47681.49
+#dif_EDi<-mean_sub_intervales - sum_int_ED_site[21,2] #ufrj -the smallest area 921.8685
+
+##### HISTOGRAMS FOR BODYMASS OF INTERVALES AND UFRJ
+
+hist((bm_commu[bm_commu$site=="intervales",]$Frug_Body_Mass))
+hist((bm_commu[bm_commu$site=="ufrj",]$Frug_Body_Mass))
+
+hist((bm_commu[bm_commu$site=="botelho",]$Frug_Body_Mass))
+hist((bm_commu[bm_commu$site=="pira",]$Frug_Body_Mass))
+
 
 ```
+
 
 ED and centrality (k, number of fragments in which the interaction occurs)
 ```{r degree of interactions}
