@@ -1299,10 +1299,15 @@ colnames(int_ed_def_site)[colnames(int_ed_def_site) == 'new_commu3$def_sum'] <- 
 colnames(int_ed_def_site)[colnames(int_ed_def_site) == 'new_commu3$area_ha'] <- 'area_ha'
 #ed_commu<- int_ed_site1[,-(7:10),drop=T]
 
-par(mfrow=c(1,2))
+par(mfrow=c(1,1))
 plot(log(int_ed_def_site$sum_ED_site)~int_ed_def_site$def_sum,
      xlab = "Defaunation",
      ylab = "Sum of Evolutionary Distinctiveness of Interactions")
+
+plot(log(int_ed_def_site$sum_ED_site)~int_ed_def_site$sum_ED_site,
+     xlab = "Sum of EDi",
+     ylab = "Mean of EDi")
+cor(int_ed_def_site$sum_ED_site,int_ed_def_site$mean_ED_site)
 
 plot(log(int_ed_def_site$sum_ED_site)~log(int_ed_def_site$area_ha),
           xlab = "Area of the fragment (log[ha])", xlim = c(12,0),
@@ -1315,7 +1320,7 @@ plot(log(int_ed_def_site$sum_ED_site)~log(int_ed_def_site$area_ha),
 #dev.copy2pdf(file="Figures/ED_def_area.pdf")    
 
 ### simple linear models
-m1<-lm(mean_ED_site~def_mean, data = int_ed_def_site)
+m1<-lm(mean_ED_site~def_sum, data = int_ed_def_site)
 summary(m1) #### mean ED per site not related to mean DEF
 
 m2<-lm(sum_ED_site~def_mean, data = int_ed_def_site)
@@ -1329,6 +1334,19 @@ final_model<-lm(log(int_ed_def_site$sum_ED_site)~int_ed_def_site$def_residuals)
 summary(final_model)
 
 ```
+
+```{r mean of ED for EDi}
+### in replying to reviewer 1, using the mean of bird and plant ED to create EDi, instead of the sum
+int_commu2[,11]<-NULL
+int_commu2$int_ed_mean<-with(int_commu2, (mean_birds_ed+mean_plants_ed)/2)
+
+plot(int_commu2$int_ed_mean, int_commu2$int_ed)
+cor(int_commu2$int_ed_mean,int_commu2$int_ed)
+
+
+```
+
+
 
 ```{r null models for cumulative EDi, Fig R1}
 ###### NULL MODELS to control for differences in network size affecting cumulative EDi
@@ -1429,18 +1447,49 @@ sd_sub_intervales<-sd(as.numeric(rep_df$sum_x), na.rm = TRUE)
 z_sub_intervales<-(sum_int_ED_site[21,2]-mean_sub_intervales)/sd_sub_intervales
 z_sub_intervales#### there is no difference from the observed EDi of the smaller area and the sub-sampled Intervales --- DOES IT MAKE SENSE?
 
+#### code to sample Intervales 26 times, and obtain the sum EDi per sample
 
-#sum_int_ED_site[10,] # intervales 47681.49
-#dif_EDi<-mean_sub_intervales - sum_int_ED_site[21,2] #ufrj -the smallest area 921.8685
+df3<-select(df2, interaction, Frug_Body_Mass)
+output <- lapply(1:1000, function(rep) {
+    sample_n((df3), 26, replace = FALSE) %>%
+    summarize(sum_x = sum(Frug_Body_Mass)) %>%
+    mutate(replicate=rep)
+})
+rep_df3 <- do.call(rbind, output)
+(rep_df3)
 
-##### HISTOGRAMS FOR BODYMASS OF INTERVALES AND UFRJ
+mean_sub_intervales3<-mean(as.numeric(rep_df3$sum_x), na.rm = TRUE)
+sd_sub_intervales3<-sd(as.numeric(rep_df3$sum_x), na.rm = TRUE)
+z_sub_intervales3<-(sum_bm_site[21,2]-mean_sub_intervales3)/sd_sub_intervales3
+z_sub_intervales3#### there is no difference from the observed EDi of the smaller area and the sub-sampled Intervales --- DOES IT MAKE SENSE?
 
-hist((bm_commu[bm_commu$site=="intervales",]$Frug_Body_Mass))
-hist((bm_commu[bm_commu$site=="ufrj",]$Frug_Body_Mass))
 
-hist((bm_commu[bm_commu$site=="botelho",]$Frug_Body_Mass))
-hist((bm_commu[bm_commu$site=="pira",]$Frug_Body_Mass))
 
+
+#####
+#HISTOGRAMS FOR BODYMASS OF INTERVALES AND UFRJ
+par(mfrow=c(4,4))
+hist((bm_commu[bm_commu$site=="intervales",]$Frug_Body_Mass),xlab="Birds body mass (g)", main= "1", col="lightgreen")
+hist((bm_commu[bm_commu$site=="botelho",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "2", col="lightgreen")
+hist((bm_commu[bm_commu$site=="reservasRJ",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "3", col="lightgreen")
+hist((bm_commu[bm_commu$site=="jurubatiba",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "4", col="lightgreen")
+hist((bm_commu[bm_commu$site=="cardoso",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "5", col="lightgreen")
+hist((bm_commu[bm_commu$site=="itapua",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "6", col="lightgreen")
+hist((bm_commu[bm_commu$site=="rebioAntas",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "7", col="lightgreen")
+hist((bm_commu[bm_commu$site=="ibitipoca",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "8", col="lightgreen")
+hist((bm_commu[bm_commu$site=="comboios",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "9", col="lightgreen")
+hist((bm_commu[bm_commu$site=="anchieta",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "10", col="lightgreen")
+hist((bm_commu[bm_commu$site=="fragmentMG",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "11", col="lightgreen")
+hist((bm_commu[bm_commu$site=="araucaria",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "12", col="lightgreen")
+hist((bm_commu[bm_commu$site=="stagenebra",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "13", col="lightgreen")
+hist((bm_commu[bm_commu$site=="itatiba",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "14", col="lightgreen")
+hist((bm_commu[bm_commu$site=="fragmentRC",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "15", col="lightgreen")
+hist((bm_commu[bm_commu$site=="restored57",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "16", col="lightgreen")
+hist((bm_commu[bm_commu$site=="restored15",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "17", col="lightgreen")
+hist((bm_commu[bm_commu$site=="restored25",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "18", col="lightgreen")
+hist((bm_commu[bm_commu$site=="fragmentSP",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "19", col="lightgreen")
+hist((bm_commu[bm_commu$site=="pira",]$Frug_Body_Mass), xlab="Birds body mass (g)", main= "20", col="lightgreen")
+hist((bm_commu[bm_commu$site=="ufrj",]$Frug_Body_Mass),xlab="Birds body mass (g)", main= "21", col="lightgreen") 
 
 ```
 
